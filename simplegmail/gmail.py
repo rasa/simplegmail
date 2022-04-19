@@ -61,6 +61,8 @@ class Gmail(object):
     # Max query results, per
     # https://developers.google.com/gmail/api/reference/rest/v1/users.messages/list#query-parameters
     MAX_RESULTS = 500
+    MESSAGE_MODE = 'messages'
+    THREAD_MODE = 'threads'
 
     def __init__(
         self,
@@ -72,6 +74,7 @@ class Gmail(object):
         self.creds_file = creds_file
         self._maxResults = 0
         self._resultSizeEstimate = 0
+        self._mode = self.MESSAGE_MODE
 
         try:
             # The file gmail_token.json stores the user's access and refresh
@@ -162,8 +165,11 @@ class Gmail(object):
         )
 
         try:
-            req = self.service.users().messages().send(userId='me', body=msg)
-            res = req.execute()
+            if self._mode == self.MESSAGE_MODE:
+                api = self.service.users().messages()
+            else:
+                api = self.service.users().threads()
+            res = api.send(userId='me', body=msg).execute()
             return self._build_message_from_ref(user_id, res, 'reference')
 
         except HttpError as error:
@@ -517,8 +523,12 @@ class Gmail(object):
         try:
             max_results = self._maxResults
             if max_results == 0:
-                max_results = MAX_RESULTS
-            response = self.service.users().messages().list(
+                max_results = self.MAX_RESULTS
+            if self._mode == self.MESSAGE_MODE:
+                api = self.service.users().messages()
+            else:
+                api = self.service.users().threads()
+            response = api.list(
                 userId=user_id,
                 q=query,
                 labelIds=labels_ids,
@@ -701,7 +711,11 @@ class Gmail(object):
 
         try:
             # Get message JSON
-            message = self.service.users().messages().get(
+            if self._mode == self.MESSAGE_MODE:
+                api = self.service.users().messages()
+            else:
+                api = self.service.users().threads()
+            message = api.get(
                 userId=user_id, id=message_ref['id']
             ).execute()
 
@@ -829,7 +843,11 @@ class Gmail(object):
                 if 'data' in payload['body']:
                     data = payload['body']['data']
                 else:
-                    res = self.service.users().messages().attachments().get(
+                    if self._mode == self.MESSAGE_MODE:
+                        api = self.service.users().messages()
+                    else:
+                        api = self.service.users().threads()
+                    res = api.attachments().get(
                         userId=user_id, messageId=msg_id, id=att_id
                     ).execute()
                     data = res['data']
@@ -1032,3 +1050,12 @@ class Gmail(object):
     @property
     def resultSizeEstimate(self):
         return self._resultSizeEstimate
+
+    @property
+    def mode(self):
+        return self._mode
+
+    @mode.setter
+    def mode(self, value: str):
+        if value.lower() in [self.MESSAGE_MODE, self.THREAD_MODE]:
+            self._mode = value.lower()
