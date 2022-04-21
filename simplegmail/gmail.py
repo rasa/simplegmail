@@ -572,6 +572,51 @@ class Gmail(object):
             labels = [Label(name=x['name'], id=x['id']) for x in res['labels']]
             return labels
 
+    def get_labels_as_dict(self, user_id: str = 'me') -> dict:
+        """
+        Retrieves all labels for the specified user.
+
+        These Label objects are to be used with other functions like
+        modify_labels().
+
+        Args:
+            user_id: The user's email address. By default, the authenticated
+                user.
+
+        Returns:
+            The list of Label objects.
+
+        Raises:
+            googleapiclient.errors.HttpError: There was an error executing the
+                HTTP request.
+
+        """
+
+        try:
+            res = self.service.users().labels().list(
+                userId=user_id
+            ).execute()
+
+        except HttpError as error:
+            # Pass along the error
+            raise error
+
+        try:
+            labels = {}
+            for x in res['labels']:
+                # Get label JSON
+                label = self.service.users().labels().get(
+                    userId=user_id, id=x['id']
+                ).execute()
+
+                labels[x['name']] = label
+            return labels
+
+        except HttpError as error:
+            # Pass along the error
+            raise error
+
+
     def _get_messages_from_refs(
         self,
         user_id: str,
