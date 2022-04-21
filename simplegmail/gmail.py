@@ -611,7 +611,16 @@ class Gmail(object):
             raise error
 
         else:
-            labels = [Label(name=x['name'], id=x['id']) for x in res['labels']]
+            labels = [
+                Label(
+                    name=x["name"],
+                    id=x["id"],
+                    type=x["type"],
+                    messageListVisibility=x.get("messageListVisibility", ""),
+                    labelListVisibility=x.get("labelListVisibility", ""),
+                )
+                for x in res["labels"]
+            ]
             return labels
 
 
