@@ -546,7 +546,10 @@ class Gmail(object):
 
             while 'nextPageToken' in response:
                 if self._maxResults != 0:
-                    remaining = self._maxResults - len(message_refs)
+                    if self._mode == self.MESSAGE_MODE:
+                        remaining = self._maxResults - len(message_refs)
+                    else:
+                        remaining = self._maxResults - len(thread_refs)
                     if remaining <= 0:
                         break
                     max_results = remaining
